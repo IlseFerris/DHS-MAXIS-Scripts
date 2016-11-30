@@ -123,7 +123,7 @@ DO
 			INQD_issuance = HG_month & HG_year			'creates a new variable for housing grant month & year
 			month_of_issuance = initial_month & initial_year	'creates a new variable with footer month & footer year from dialog
 			'if an issuance is found that matches the month/year selected by the user, the script will stop
-			'If month_of_issuance = INQD_issuance then script_end_procedure("Issuance has already been made on the month selected. Please review your case, and update manually.")
+			If month_of_issuance = INQD_issuance then script_end_procedure("Issuance has already been made on the month selected. Please review your case, and update manually.")
 		END IF
 		row = row + 1
 	Loop until row = 18				'repeats until the end of the page
