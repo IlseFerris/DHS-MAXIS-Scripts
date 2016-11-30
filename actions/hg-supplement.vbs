@@ -4,7 +4,7 @@ start_time = timer
 STATS_counter = 1                     	'sets the stats counter at one
 STATS_manualtime = 269                	'manual run time in seconds
 STATS_denomination = "C"       			' is for case
-'END OF stats block=========================================================================================================			
+'END OF stats block=========================================================================================================
 
 'LOADING FUNCTIONS LIBRARY FROM GITHUB REPOSITORY===========================================================================
 IF IsEmpty(FuncLib_URL) = TRUE THEN	'Shouldn't load FuncLib if it already loaded once
@@ -38,7 +38,7 @@ IF IsEmpty(FuncLib_URL) = TRUE THEN	'Shouldn't load FuncLib if it already loaded
 END IF
 'END FUNCTIONS LIBRARY BLOCK================================================================================================
 
-'Date variables 
+'Date variables
 'current month -1
 CM_minus_1_mo =  right("0" &          	 DatePart("m",           DateAdd("m", -1, date)            ), 2)
 CM_minus_1_yr =  right(                  DatePart("yyyy",        DateAdd("m", -1, date)            ), 2)
@@ -68,7 +68,7 @@ EndDialog
 'The script============================================================================================================================
 'Connects to MAXIS, grabbing the case MAXIS_case_number
 EMConnect ""
-Call MAXIS_case_number_finder(MAXIS_case_number) 
+Call MAXIS_case_number_finder(MAXIS_case_number)
 member_number = "01"	'defaults the member number to 01
 initial_month = CM_minus_1_mo  'defaulting date to current month - one
 initial_year = CM_minus_1_yr
@@ -100,15 +100,13 @@ EMWritescreen initial_year, 20, 46
 Call navigate_to_MAXIS_screen("MONY", "INQX")
 EMWritescreen CM_minus_11_mo, 6, 38
 EMWritescreen CM_minus_11_yr, 6, 41
-EMWritescreen CM_plus_1_mo, 6, 53		
+EMWritescreen CM_plus_1_mo, 6, 53
 EMwritescreen CM_plus_1_yr, 6, 56
 EMWriteScreen "x", 10, 5		'selecting MFIP
 transmit
 
-'msgbox CM_minus_11_mo & "/" & CM_minus_1_yr & vbcr & CM_plus_1_mo & "/" & CM_plus_1_yr
-
 'Checking for PRIV cases.
-EMReadScreen priv_check, 6, 24, 14 'If it can't get into the case, script will end. 
+EMReadScreen priv_check, 6, 24, 14 'If it can't get into the case, script will end.
 IF priv_check = "PRIVIL" THEN script_end_procedure("This case is a privliged case. You do not have access to this case.")
 
 'checking to see if HG has been issued for the month selected: MONY/INQX----------------------------------------------------------------------------------------------------
@@ -120,13 +118,13 @@ DO
 		IF housing_grant = "HG" then
 			'reading the housing grant information
 			EMReadScreen HG_amt_issued, 7, row, 40
-			EMReadScreen HG_month, 2, row, 73	
+			EMReadScreen HG_month, 2, row, 73
 			EMReadScreen HG_year, 2, row, 79
 			INQD_issuance = HG_month & HG_year			'creates a new variable for housing grant month & year
 			month_of_issuance = initial_month & initial_year	'creates a new variable with footer month & footer year from dialog
 			'if an issuance is found that matches the month/year selected by the user, the script will stop
-			If month_of_issuance = INQD_issuance then script_end_procedure("Issuance has already been made on the month selected. Please review your case, and update manually.")	
-		END IF 
+			'If month_of_issuance = INQD_issuance then script_end_procedure("Issuance has already been made on the month selected. Please review your case, and update manually.")
+		END IF
 		row = row + 1
 	Loop until row = 18				'repeats until the end of the page
 		PF8
@@ -138,57 +136,86 @@ LOOP UNTIL last_page_check = "THIS IS THE LAST PAGE"
 back_to_SELF
 EMWritescreen initial_month, 20, 43			'enters footer month/year user selected since you have to be in the same footer month/year as the CHCK is being issued for
 EMWritescreen initial_year, 20, 46
-Call navigate_to_MAXIS_screen("ELIG", "MFIP")	
 
+Call navigate_to_MAXIS_screen("ELIG", "MFIP")
 'Ensures that users is in the most recently approved version of MFIP
 EMReadScreen no_MFIP, 10, 24, 2
 If no_MFIP = "NO VERSION" then script_end_procedure("There are no eligibilty results for this case. Please check your case number/case for accuracy.")
-EMWriteScreen "99", 20, 79 		'this is the most amount of eligibility results that elig can contain, so all versions appear in the next pop up 	
-transmit	
 
+'Script will check for Fraud on most recent unappproved version that may have been added after report was generated as you cannot approve negative actions in previous months
+fraud_row = 7											'dummy variable to count what row we are on for do loop
+DO
+	EMReadScreen fraud_member_check, 1, fraud_row, 53 'Reading a spot on elig status to determine if there is even an entry for this row
+	IF fraud_member_check <> " " THEN  								'if there is something on this row, check it
+		EMWriteScreen "X", fraud_row, 3  'places x on member's person test
+		Transmit													'transmits to open person test for that member
+		EMReadScreen fraud_status, 1, 13, 17 'Reading one character as it will only either be FAILED or PASSED
+		IF fraud_status = "F" THEN						'if Fraud is FAILED then we must quit script, otherwise we can check
+			script_end_procedure("Fraud was found FAILED on MFIP person test. Please review and process manually.")
+		ELSE
+			Transmit													'transmitting out of person test
+		END IF
+	END IF
+	fraud_row = fraud_row + 1   'incrementing to the next row
+	IF fraud_row = 18 THEN
+		PF8      'if we've reading the
+		EMReadScreen fraud_edit_check, 2, 24, 5 'Reading for NO MORE MEMBERS TO DISPLAY edit message.
+		fraud_row = 7 'resetting fraud row
+	END IF
+LOOP until fraud_edit_check = "NO"
+
+'navigating back to intial MFIP elig now that we've checked for fraud.
+Call navigate_to_MAXIS_screen("ELIG", "MFIP")
+'Ensures that users is in the most recently approved version of MFIP
+EMReadScreen no_MFIP, 10, 24, 2
+If no_MFIP = "NO VERSION" then script_end_procedure("There are no eligibilty results for this case. Please check your case number/case for accuracy.")
+
+EMWriteScreen "99", 20, 79 		'this is the most amount of eligibility results that elig can contain, so all versions appear in the next pop up
+transmit
+stopscript
 'This brings up the MFIP versions of eligibilty results to search for approved versions
 MAXIS_row = 7
 Do
 	EMReadScreen app_status, 8, MAXIS_row, 50
 	If trim(app_status) = "" then exit do 	'if end of the list is reached then exits the do loop
 	If app_status = "UNAPPROV" Then MAXIS_row = MAXIS_row + 1
-	If app_status = "APPROVED" then 
+	If app_status = "APPROVED" then
 		EMReadScreen elig_status, 8, MAXIS_row, 37
-		If elig_status = "ELIGIBLE" then 
+		If elig_status = "ELIGIBLE" then
 			EMReadScreen vers_number, 1, MAXIS_row, 23
 			EMWriteScreen vers_number, 18, 54
 			transmit		'transmits to approved and eligible veresion of MFIP
 			exit do
-		ELSE 
+		ELSE
 		 	MAXIS_row = MAXIS_row + 1
-		END IF 
-	END IF 
+		END IF
+	END IF
 Loop until app_status = "APPROVED" or trim(app_status) = ""
-'If no elig results are found, then the script ends. 
+'If no elig results are found, then the script ends.
 If trim(app_status) = "" then script_end_procedure("Eligible and approved MFIP results were not found. Please check your case for accuracy.")
 
 msgbox "Are we on the most up-to-date approved version?"
 
-'goes into ELIG/MFIP, and checks for the reason for the manual MONY/CHCK: either emps exempt populations or the newly added populations 
+'goes into ELIG/MFIP, and checks for the reason for the manual MONY/CHCK: either emps exempt populations or the newly added populations
 MAXIS_row = 7	'establishing the row to start searching
-DO 
+DO
 	EMReadscreen memb_number, 2, MAXIS_row, 6		'searching for member number from initial dialog
 	If memb_number = "  " then script_end_procedure("The member number you entered does not appear to be valid. Please check your member number and try again.")
 	IF member_number = memb_number then exit do				'exits do if member number matches
-	MAXIS_row = MAXIS_row + 1	'otherwise it searches again on the next row 	
+	MAXIS_row = MAXIS_row + 1	'otherwise it searches again on the next row
 LOOP until MAXIS_row = 18
 
 'The recipient isevaluated as meeting one of the 2 newly added population inelgible codes
 EMWritescreen "x", MAXIS_row, 3			'selects the member number to navigate to the MFIP Person Test Results
 transmit
-'Checking FAILED reason for newly added population (SSI recipients and undocumented non-citizens with eligible children) 
-issuance_reason = ""	'issuance_reason = "" will determine what path the script takes. If "" then case is an emps exempt person, if not person is newly added population person 
+'Checking FAILED reason for newly added population (SSI recipients and undocumented non-citizens with eligible children)
+issuance_reason = ""	'issuance_reason = "" will determine what path the script takes. If "" then case is an emps exempt person, if not person is newly added population person
 EMReadscreen cit_test_status, 6, 9, 17
 EMReadscreen SSI_test_status, 6, 9, 52
-If cit_test_status = "FAILED" then 
-	issuance_reason = "is an undocumented non-citizen with eligible children"	
-ElseIf SSI_test_status = "FAILED" then 
-	issuance_reason = "receives federal SSI due to disability that prevents work" 		 
+If cit_test_status = "FAILED" then
+	issuance_reason = "is an undocumented non-citizen with eligible children"
+ElseIf SSI_test_status = "FAILED" then
+	issuance_reason = "receives federal SSI due to disability that prevents work"
 END IF
 
 'If no EMPS exclusion exists, or one of the applicable tests are not failed, then case is not elig for HG supplement.
@@ -197,12 +224,12 @@ If issuance_reason = "" then script_end_procedure("Case does not meet criteria f
 transmit  'Transmits to exit the MFIP Person Test Results back to MFPR
 Call navigate_to_MAXIS_screen("ELIG", "MFBF")
 'ensures the user is indeed on MFBF otherwise the array will not be filled and the script will suffer from an epic fail
-DO 
+DO
 	EMReadScreen MFBF_check, 4, 3, 47
-	If MFBF_check <> "MFBF" then 
+	If MFBF_check <> "MFBF" then
 		EMWriteScreen "MFBF", 20, 71
 		transmit
-	END IF 
+	END IF
 LOOP until MFBF_check = "MFBF"
 
 'establishes values for variables and declaring the arrays for newly added population cases
@@ -216,53 +243,53 @@ Redim MFIP_member_array(3, 0)
 const member_code 		= 0
 const adult_child_code	= 1
 const cash_code 		= 2
-const state_food_code 	= 3 
+const state_food_code 	= 3
 
 'Gathers information for the array (member code, adult_child_code, cash_code, state_food_code)
 MAXIS_row = 7	'establishing the row to start searching for members
-DO 
+DO
 	add_to_array = ""
 	EMReadscreen ref_num, 2, MAXIS_row, 3		'searching for member number
 	If ref_num = "  " then exit do				'exits do if member number matches
 	EMReadScreen member_elig_status, 1, MAXIS_row, 27
 	'Adding members to array to gather information for the MONY/CHCK (member number, adult vs child, cash and state food coding)
-	If ref_num = member_number then 
+	If ref_num = member_number then
 		add_to_array = True						'MEMB 01 needs to be added to MONY/CHCK weather they are eligible or not
-	Elseif trim(member_elig_status) = "A" then 
+	Elseif trim(member_elig_status) = "A" then
 		add_to_array = True						'all eligible HH members need to be added to MONY/CHCK
 	Else
-		add_to_array = False 					'Anyone who is not MEMB 01 or is INELIGIBLE is not added to the array 
-	End if 
-	
-	If add_to_array = True then 	
+		add_to_array = False 					'Anyone who is not MEMB 01 or is INELIGIBLE is not added to the array
+	End if
+
+	If add_to_array = True then
 		EMReadScreen cash, 	 1, MAXIS_row, 37		'reads cash and state_food coding
 		EMReadScreen state_food,  1, MAXIS_row, 54
-		
+
 		ReDim Preserve MFIP_member_array(3,  entry_record)				'This resizes the array based on the number of members being added to the array
 		MFIP_member_array (member_code,      entry_record) = ref_num	'The client member # is added to the array
 		MFIP_member_array (cash_code,    	 entry_record) = cash		'inputs the cash code into the array
 		MFIP_member_array (state_food_code,  entry_record) = state_food	'inputs the state food code into the array
-			
+
 		entry_record = entry_record + 1
 		If trim(member_elig_status) = "A" then number_eligible_members = number_eligible_members + 1	'adds up the total number of eligible members to be inputted into MONY/CHCK
-	END IF 	
-	
-	msgbox "ref number: " & ref_num & vbcr & "eligible status: " & member_elig_status & vbcr & "add to array: " & add_to_array & vbcr & "cash: " & cash & vbcr & "state food: " & state_food	
-	
-	MAXIS_row = MAXIS_row + 1	'otherwise it searches again on the next row 	
-	If MAXIS_row = 16 then 
+	END IF
+
+	msgbox "ref number: " & ref_num & vbcr & "eligible status: " & member_elig_status & vbcr & "add to array: " & add_to_array & vbcr & "cash: " & cash & vbcr & "state food: " & state_food
+
+	MAXIS_row = MAXIS_row + 1	'otherwise it searches again on the next row
+	If MAXIS_row = 16 then
 		PF8
-	END IF 
-LOOP until trim(ref_num) = ""	
+	END IF
+LOOP until trim(ref_num) = ""
 
 'ensures that number_eligible_members is a two-digit number to be inputted into MONY/CHCK
 number_eligible_members = "0" & number_eligible_members
 number_eligible_members = right(number_eligible_members, 2)
 
 msgbox "# of eligible members: " & number_eligible_members
- 
+
 'goes into CASE/PERS and grabs the adult_child_code to be inputted into the MONY/CHCK
-Call navigate_to_MAXIS_screen("CASE", "PERS") 	
+Call navigate_to_MAXIS_screen("CASE", "PERS")
 For item = 0 to Ubound(MFIP_member_array, 2)
 	MAXIS_row = 10
 	Do
@@ -270,31 +297,31 @@ For item = 0 to Ubound(MFIP_member_array, 2)
 		IF trim(pers_ref_number) = "" then exit do
 		IF MFIP_member_array(member_code, item) = pers_ref_number then
 			EMReadScreen relationship_status, 10, MAXIS_row + 1, 18 	'relationship_status is found one line down from the member number
-			IF 	trim(relationship_status) = "Child" or _ 
+			IF 	trim(relationship_status) = "Child" or _
 				trim(relationship_status) = "Step Child" or _
 				trim(relationship_status) = "Grandchild" or _
 				trim(relationship_status) = "Niece" or _
-				trim(relationship_status) = "Nephew" then 
+				trim(relationship_status) = "Nephew" then
 				relationship_status = "C"
-			else 
+			else
 				relationship_status = "A"			'defaults all non-child relationships to adults
-			END IF 
+			END IF
 			MFIP_member_array (adult_child_code, item) = relationship_status 'The client adult_child_code is added to the array
-			exit do	
-		Else 
+			exit do
+		Else
 			MAXIS_row = MAXIS_row + 3			'information is 3 rows apart
-			If MAXIS_row = 19 then 
+			If MAXIS_row = 19 then
 				PF8
 				MAXIS_row = 10					'changes MAXIS row if more than one page exists
-			END if 
+			END if
 		END if
 		EMReadScreen last_PERS_page, 21, 24, 2
 	LOOP until last_PERS_page = "THIS IS THE LAST PAGE"
 	msgbox pers_ref_number & " " & relationship_status
 Next
- 
+
 'MONY/CHCK----------------------------------------------------------------------------------------------------
-'navigates to MONY/CHCK and inputs codes into 1st screen: 
+'navigates to MONY/CHCK and inputs codes into 1st screen:
 back_to_SELF
 EMWritescreen initial_month, 20, 43			'enters footer month/year user selected since you have to be in the same footer month/year as the CHCK is being issued for
 EMWritescreen initial_year, 20, 46
@@ -303,7 +330,7 @@ Call navigate_to_MAXIS_screen("MONY", "CHCK")
 'error handling if a worker does not have access to a specific case (out of county, etc.)
 EMReadscreen auth_error, 8, 24, 2
 If auth_error = "YOUR ARE" then script_end_procedure("You are not authoriszed to issue a MONY/CHCK on this case. The script will now end.")
- 
+
 EMWriteScreen "MF", 5, 17		'enters mandatory codes per HG instruction
 EMWriteScreen "MF", 5, 21		'enters mandatory codes per HG instruction
 EMWriteScreen "31", 5, 32		'restored payment code per the HG instruction
@@ -311,10 +338,10 @@ EMWriteScreen "31", 5, 32		'restored payment code per the HG instruction
 'total # eligible house hold members from MFBF needs to be inputted
 EMWriteScreen number_eligible_members, 7, 27			'enters the number of eligible HH members
 msgbox "# of eligible members: " & number_eligible_members
-transmit 
+transmit
 
 EMReadScreen future_month_check, 6, 24, 2		'ensuring that issuances for current or future months are not being made
-IF future_month_check = "REASON" then script_end_procedure("You cannot issue a MONY/CHCK for the current or future month. Approve results in ELIG/MFIP.")	
+IF future_month_check = "REASON" then script_end_procedure("You cannot issue a MONY/CHCK for the current or future month. Approve results in ELIG/MFIP.")
 
 'now we're on the MFIP issuance detail pop-up screen
 MAXIS_row = 10
@@ -324,16 +351,17 @@ For item = 0 to UBound(MFIP_member_array, 2)
 	EMWriteScreen MFIP_member_array(adult_child_code, 	item), MAXIS_row, 14
 	EMWriteScreen MFIP_member_array(cash_code, 			item), MAXIS_row, 23
 	EMWriteScreen MFIP_member_array(state_food_code,	item), MAXIS_row, 33
-	MAXIS_row = MAXIS_row + 1 
+	MAXIS_row = MAXIS_row + 1
 	If MAXIS_row = 15 then
 		PF8			'accounting for more than one page of members to input
 		MAXIS_row = 10
-	End if 
-NEXT 		
+	End if
+NEXT
 
 EMwritescreen "110.00", 10, 53			'enters the housing grant amount
+msgbox "This is what is written here."
 
-'This is here temporarily until testing is completed. Testers will need to PF3 to exit the MONY/CHCK function, then MONY/CHCK's will not be sent to recipients.  
+'This is here temporarily until testing is completed. Testers will need to PF3 to exit the MONY/CHCK function, then MONY/CHCK's will not be sent to recipients.
 'msgbox "All eligible members and MEMB 01 added and Hg issuance ready. Stop script will occur once message box is closed."
 'stopscript
 
@@ -342,39 +370,43 @@ EMReadScreen extra_error_check, 7, 17, 4			'double-checking that a duplicate iss
 IF extra_error_check = "HOUSING" then script_end_procedure ("Housing grant may have already been issued. Please recheck your case, and try again.")
 EMReadscreen REI_issue, 3, 15, 6
 msgbox REI_issue
-If REI_issue = "REI" then 
+If REI_issue = "REI" then
 	EMWriteScreen "N", 15, 52	'N to REI issuance per instruction from DHS
-Else 
+Else
 	transmit
-END IF 
+END IF
 Transmit
 EMWriteScreen "Y", 15, 29	'Y to confirm approval
+msgbox "Writing Y to confirm"
 transmit
 transmit 'transmits twice to get to the restoration of benefits screen
 
 'some cases need to have the TIME panel completed
 EMReadScreen update_TIME_panel_check, 4, 14, 32
-If update_TIME_panel_check = "TIME" then 
+If update_TIME_panel_check = "TIME" then
 	transmit
+	msgbox "we are in time"
 	PF10
 	PF3
-END IF  
+END IF
+msgbox "left time"
 PF3
+msgbox "leaving notice"
 PF3 	'PF3's twice to NOT send the notice
 
-'Ensuring that issuance made by checking the automated case note 
+'Ensuring that issuance made by checking the automated case note
 back_to_SELF
 Call navigate_to_MAXIS_screen("CASE", "NOTE")
 EMWriteScreen "X", 5, 3
-transmit		'Entering the 1st case note which is the case note made by the system automatically after issuance. 
-EMReadScreen payment_month, 2, 5, 28		
+transmit		'Entering the 1st case note which is the case note made by the system automatically after issuance.
+EMReadScreen payment_month, 2, 5, 28
 EMReadScreen payment_year, 2, 5, 34
-'Created new variables for confirming issuance 
+'Created new variables for confirming issuance
 payment_date = payment_month & "/" & payment_year
 issuance_month = initial_month & "/" & initial_year
 
-If payment_date <> issuance_month then 
-	script_end_procedure("WARNING!" & vbNewLine & VbnewLine & " Issuance for " & issuance_month & " may not have occurred. Please check the case to ensure that issuance has been made.")
-Else 
+If payment_date <> issuance_month then
+	script_end_procedure("WARNING!" & vbNewLine & VbnewLine & " Issuance for " & payment_date & " may not have occurred. Please check the case to ensure that issuance has been made.")
+Else
 	script_end_procedure("Success! A MONY/CHCK has been issued.")
 END IF
