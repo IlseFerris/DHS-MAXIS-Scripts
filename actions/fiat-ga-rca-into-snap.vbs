@@ -96,7 +96,12 @@ maxis_background_check				'ensures that case is out of background
 '----------------------------------------------------------------------------------------------------STAT/PROG
 'Needs the elig begin date for proration reasons, collect it from PROG
 call navigate_to_maxis_screen("STAT", "PROG")
-EMReadscreen proration_date, 8, 10, 44
+
+'Checking for PRIV cases.
+EMReadScreen priv_check, 6, 24, 14 'If it can't get into the case, script will end.
+IF priv_check = "PRIVIL" THEN script_end_procedure("This case is a privliged case. You do not have access to this case.")
+
+EMReadscreen proration_date, 8, 10, 44		'reading the SNAP proration date for ELIG/FS
 
 'checking for active cash program and type of cash program
 MAXIS_row = 6
@@ -112,7 +117,6 @@ Else
 End if
 
 If cash_status <> "ACTV" then script_end_procedure("This case is not active on GA or RCA. Please review case.")
-
 IF cash_prog = "RC" then cash_prog = "RCA"		'changes the program to the full orogram name
 
 '----------------------------------------------------------------------------------------------------ELIG
@@ -225,6 +229,7 @@ For i = 0 to ubound(footer_month_array)
 	If income_cap_check = "PROSP GROSS" then script_end_procedure("Prospective gross income is over the income standard. THE FIAT cannot be saved. Please review case and budget for potential errors.")
 	EMWritescreen "Y", 13, 41
 	transmit
+	
 	EMReadscreen final_month_check, 4, 10, 53 'This looks for a pop-up that only comes up in the final month, and clears it.
 	IF final_month_check = "ELIG" THEN
 		EMWritescreen "Y", 11, 52
