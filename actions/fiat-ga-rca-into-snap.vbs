@@ -239,4 +239,4 @@ For i = 0 to ubound(footer_month_array)
 	END IF
 next
 
-script_end_procedure("Success, the FIAT results have been generated. Please review before approving." & vbcr & vbcr & "Update the applicable client's WREG panel using the FSET/ABAWD coding heirarchy.")
+script_end_procedure("Success, the FIAT results have been generated. Please review before approving." & vbcr & vbcr & "Update the applicable client's WREG panel using the FSET/ABAWD coding hierarchy.")
