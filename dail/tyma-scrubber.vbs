@@ -44,6 +44,7 @@ changelog = array()
 
 'INSERT ACTUAL CHANGES HERE, WITH PARAMETERS DATE, DESCRIPTION, AND SCRIPTWRITER. **ENSURE THE MOST RECENT CHANGE GOES ON TOP!!**
 'Example: call changelog_update("01/01/2000", "The script has been updated to fix a typo on the initial dialog.", "Jane Public, Oak County")
+call changelog_update("03/02/2018", "Changed TIKLs so they are not 3 years in the future", "Casey Love, Hennepin County")
 call changelog_update("11/28/2016", "Initial version.", "Charles Potter, DHS")
 
 'Actually displays the changelog. This function uses a text file located in the My Documents folder. It stores the name of the script file and a description of the most recent viewed change.
@@ -65,7 +66,9 @@ IF full_message = "~*~CONSIDER SENDING 1ST" THEN     'script finds 1st TIKL mess
 	EMWritescreen "X", 6, 3
 	Transmit
 	EMReadScreen MAXIS_case_number, 8, 6, 57
-	EMReadScreen TYMA_start_date, 8, 10, 5          'reading TYMA start date to carry it forward
+	EMReadScreen TYMA_start_date, 10, 10, 5          'reading TYMA start date to carry it forward - needs to be 10 because the year is 4 digits long
+    TYMA_start_date = trim(TYMA_start_date)             'remving blanks inc ase thedate is only 8 digits long
+    TYMA_start_date = replace(TYMA_start_date, ",", "") 'removing comma incase date is 8 or 9 digits long
 	TYMA_start_date = cdate(TYMA_start_date)
 	Back_to_self
 	start_a_blank_CASE_NOTE
@@ -88,8 +91,10 @@ IF full_message = "~*~CONSIDER SENDING 2ND" THEN     'script finds 2nd TIKL mess
 	EMWritescreen "X", 6, 3
 	Transmit
 	EMReadScreen MAXIS_case_number, 8, 6, 57
-	EMReadScreen TYMA_start_date, 8, 10, 5          'reading TYMA start date to carry it forward Needs to read 10 digits since after first TIKL the variable gets Cdated/written into a YYYY format
-	TYMA_start_date = cdate(TYMA_start_date)
+    EMReadScreen TYMA_start_date, 10, 10, 5          'reading TYMA start date to carry it forward - needs to be 10 because the year is 4 digits long
+    TYMA_start_date = trim(TYMA_start_date)             'remving blanks inc ase thedate is only 8 digits long
+    TYMA_start_date = replace(TYMA_start_date, ",", "") 'removing comma incase date is 8 or 9 digits long
+    TYMA_start_date = cdate(TYMA_start_date)
 	Back_to_self
 	start_a_blank_CASE_NOTE
 	call write_variable_in_CASE_NOTE("***TYMA 2nd Quarterly Report Form Sent***")
@@ -111,8 +116,10 @@ IF full_message = "~*~2ND QUARTERLY REPORT" THEN     'script finds 3rd TIKL mess
 	EMWritescreen "X", 6, 3
 	Transmit
 	EMReadScreen MAXIS_case_number, 8, 6, 57
-	EMReadScreen TYMA_start_date, 8, 10, 5          'reading TYMA start date to carry it forward Needs to read 10 digits since after first TIKL the variable gets Cdated/written into a YYYY format
-	TYMA_start_date = cdate(TYMA_start_date)
+    EMReadScreen TYMA_start_date, 10, 10, 5          'reading TYMA start date to carry it forward - needs to be 10 because the year is 4 digits long
+    TYMA_start_date = trim(TYMA_start_date)             'remving blanks inc ase thedate is only 8 digits long
+    TYMA_start_date = replace(TYMA_start_date, ",", "") 'removing comma incase date is 8 or 9 digits long
+    TYMA_start_date = cdate(TYMA_start_date)
 	'TIKLS FOR THIRD FORM SEND DATE
 	Call navigate_to_MAXIS_screen("dail", "writ")
 	third_quart_send = DatePart("m", DateAdd("M", 8, TYMA_start_date)) & "/20/" & DatePart("YYYY", DateAdd("M", 8, TYMA_start_date))   'date to send 3rd quarter report form
@@ -129,7 +136,9 @@ IF full_message = "~*~CONSIDER SENDING 3RD" THEN     'script finds 4th TIKL mess
 	EMWritescreen "X", 6, 3
 	Transmit
 	EMReadScreen MAXIS_case_number, 8, 6, 57
-	EMReadScreen TYMA_start_date, 8, 10, 5          'reading TYMA start date to carry it forward Needs to read 10 digits since after first TIKL the variable gets Cdated/written into a YYYY format
+    EMReadScreen TYMA_start_date, 10, 10, 5          'reading TYMA start date to carry it forward - needs to be 10 because the year is 4 digits long
+    TYMA_start_date = trim(TYMA_start_date)             'remving blanks inc ase thedate is only 8 digits long
+    TYMA_start_date = replace(TYMA_start_date, ",", "") 'removing comma incase date is 8 or 9 digits long
 	TYMA_start_date = cdate(TYMA_start_date)
 	Back_to_self
 	start_a_blank_CASE_NOTE
@@ -139,10 +148,10 @@ IF full_message = "~*~CONSIDER SENDING 3RD" THEN     'script finds 4th TIKL mess
 	'TIKLS FOR SECOND FORM DUE DATE
 	Call navigate_to_MAXIS_screen("dail", "writ")
 	third_quart_due = DatePart("m", DateAdd("M", 9, TYMA_start_date)) & "/21/" & DatePart("YYYY", DateAdd("M", 9, TYMA_start_date))    'date 3rd quarter report form is due
-	Call create_MAXIS_friendly_date(third_quart_due, 0, 5, 18)
+    Call create_MAXIS_friendly_date(third_quart_due, 0, 5, 18)
 	Transmit
 	Call write_variable_in_TIKL("~*~3rd Quarterly Report form is now due. TYMA start: " & TYMA_start_date & ",  Take appropriate action. This TIKL was generated via script.")
-	Transmit
+    Transmit
 	PF3
 	script_end_procedure("Success! Script has case noted that 3rd Quarter form was sent and added a TIKL for return of 3rd quarter report form on " & third_quart_due)
 END IF
@@ -152,7 +161,9 @@ IF full_message = "~*~3RD QUARTERLY REPORT" THEN     'script finds 5th TIKL mess
 	EMWritescreen "X", 6, 3
 	Transmit
 	EMReadScreen MAXIS_case_number, 8, 6, 57
-	EMReadScreen TYMA_start_date, 8, 10, 5          'reading TYMA start date to carry it forward Needs to read 10 digits since after first TIKL the variable gets Cdated/written into a YYYY format
+    EMReadScreen TYMA_start_date, 10, 10, 5          'reading TYMA start date to carry it forward - needs to be 10 because the year is 4 digits long
+    TYMA_start_date = trim(TYMA_start_date)             'remving blanks inc ase thedate is only 8 digits long
+    TYMA_start_date = replace(TYMA_start_date, ",", "") 'removing comma incase date is 8 or 9 digits long
 	TYMA_start_date = cdate(TYMA_start_date)
 	'TIKLS FOR SECOND FORM DUE DATE
 	Call navigate_to_MAXIS_screen("dail", "writ")
@@ -160,7 +171,7 @@ IF full_message = "~*~3RD QUARTERLY REPORT" THEN     'script finds 5th TIKL mess
 	Call create_MAXIS_friendly_date(TYMA_close, 0, 5, 18)
 	Transmit
 	Call write_variable_in_TIKL("~*~TYMA ending " & Dateadd("m", 12, TYMA_start_date) &  ", take appropriate action. TYMA started " & TYMA_start_date & ". This TIKL was generated via script.")
-	Transmit
+    Transmit
 	PF3
 	script_end_procedure("Success! Script has case noted to remind of the end of TYMA.")
 END IF
